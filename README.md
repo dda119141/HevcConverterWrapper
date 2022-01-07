@@ -10,11 +10,11 @@ The conversion is performed by execution of the ffmpeg utility.
 This tool can only successfully work if the ffmpeg utility has been successfully installed in the host.
 
 ## How to build this tool
-In order to compile and build this utility, the conan package manager needs to be installed.
+In order to compile and build this utility on Linux host, the conan package manager needs to be installed.
 
     1. pip install conan
     2. mkdir build && cd build && conan install ..
-    3. cmake ..
+    3. cmake -G "Unix Makefiles" -DCMAKE_BUILD_TYPE=Release ../
     4. cmake --build .
 
 ## Requirements
