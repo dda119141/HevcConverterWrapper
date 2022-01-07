@@ -50,9 +50,9 @@ std::pair<bool, std::string> executeCommand(const std::string& command, bool pri
 
 }
 
-bool convert_to_x265(const std::string& input_file)
+bool convert_to_x265(const std::string& input_file, bool print_output = false)
 {   
-    auto check_f = [&input_file]()
+    auto check_f = [&input_file, print_output]()
     {
         std::string output_file = input_file;
 
@@ -60,10 +60,14 @@ bool convert_to_x265(const std::string& input_file)
             output_file = input_file + std::string(".x265");
         }
 
-        const std::string command = std::string("ffmpeg -i ") + input_file 
-               + std::string(" -c:v libx265 -map 0:v -map 0:a? ") + output_file;
+        const std::string command = std::string("ffmpeg -i '") + input_file 
+               + std::string("' -c:v libx265 -map 0:v -map 0:a? '") + output_file
+               + std::string("'");
 
-        auto ret = executeCommand(command);
+        if(print_output)
+            std::cout << command << std::endl;
+
+        auto ret = executeCommand(command, print_output);
 
         return (std::get<0>(ret));
     };
@@ -96,23 +100,22 @@ bool check_video_file(const std::string& input_file)
     return check_f();
 }
 
-bool process_file(const std::string& input_file)
+bool process_file(const std::string& input_file, bool print_output = false)
 {
-    auto process_video_file = [&input_file]()
+    std::cout << "Conversion Start: " << input_file.c_str() << std::endl;
+
+    auto process_video_file = [&input_file, print_output]()
     {
-        bool success = false;
+        const auto success = convert_to_x265(input_file, print_output);
 
-        success = check_video_file(input_file);
-
+        std::cout << "Conversion End: " << input_file.c_str() << std::endl;
+        
         if(success){
-            std::cout << "file " << input_file.c_str() << " is a video file \n";
-            success = convert_to_x265(input_file);
+            return rename_file(input_file);
         }
-
-        if(success)
-            success = rename_file(input_file);
-
-        return success;
+        else {
+            return success;
+        }
     };
 
     return process_video_file();

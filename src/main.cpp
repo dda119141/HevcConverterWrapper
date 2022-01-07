@@ -6,43 +6,77 @@
 
 #include <parse_files.hpp>
 #include <experimental/filesystem>
+#include <algorithm>
+#include <execution>
 #include <lyra/lyra.hpp>
 
-
-struct convertOptions {
-    bool nr_of_parralel_conversions;
+struct convertOptions
+{
+    int nr_of_parallel_conversions = 1;
     bool to_delete;
 } convertOption = {};
 
-
-bool parse_files(const std::string& directory,
-                           const struct convertOptions& tags) {
+bool parse_files(const std::string &directory,
+                 const struct convertOptions &opt_arg)
+{
     namespace fs = std::experimental::filesystem;
 
     using std::cout;
     using std::endl;
 
     const std::string currentFilePath = fs::absolute(directory).string();
+    const fs::path video_path = fs::path(currentFilePath);
 
-    const fs::path mp3Path = fs::path(currentFilePath);
-    if (!fs::exists(mp3Path)) {
+    if (!fs::exists(video_path))
+    {
         std::cerr << "Path: " << currentFilePath << " does not exist" << endl;
 
         return false;
-
-    } else if (fs::is_regular_file(mp3Path)) {
-        const std::string mediafile = mp3Path.string();
+    }
+    else if (fs::is_regular_file(video_path))
+    {
+        const std::string mediafile = video_path.string();
 
         process_file(mediafile);
-    } else {
-        try {
-            for (auto& filen : fs::recursive_directory_iterator(mp3Path.string())) {
+    }
+    else
+    {
+        try
+        {
+            const unsigned int nr_of_conversions = opt_arg.nr_of_parallel_conversions;
+            static unsigned int number_of_files = opt_arg.nr_of_parallel_conversions;
+            std::vector<std::string> files = {};
+            
+            for (auto &filen : fs::recursive_directory_iterator(video_path.string()))
+            {
                 const std::string mediafile = filen.path().string();
 
-                process_file(mediafile);
-            }
+                if (number_of_files > 0)
+                {
+                    const auto success = check_video_file(mediafile);
+                    if (success)
+                    {
+                        files.push_back(mediafile);
+                        number_of_files--;
+                    }
+                }
+                else
+                {
+                    std::for_each(std::execution::par_unseq, files.begin(),
+                                  files.end(), [nr_of_conversions](std::string input_file)
+                                  {
+                                      if (nr_of_conversions == 1)
+                                          process_file(input_file, true);
+                                      else
+                                          process_file(input_file, false);
+                                  });
 
-        } catch (fs::filesystem_error& e) {
+                    number_of_files = nr_of_conversions;
+                }
+            }
+        }
+        catch (fs::filesystem_error &e)
+        {
             cout << "wrong path:" << e.what() << endl;
         }
     }
@@ -50,40 +84,44 @@ bool parse_files(const std::string& directory,
     return true;
 }
 
-
-int main(int argc, const char** argv) {
+int main(int argc, const char **argv)
+{
 
     bool show_help = false;
     std::string directory;
 
     auto parser =
         lyra::help(show_help).description(
-                "This is an utility for converting video files to x265 format \nwithin "
-                "a directory.") |
-        lyra::opt(directory, "dir")["--directory"]["-d"](
-                "specify directory or file to use for convertion (REQUIRED).")
-        .required() |
-        lyra::opt(convertOption.to_delete)["--delete"]["-d"]("delete original file upon successful convertion.") |
-        lyra::opt(convertOption.nr_of_parralel_conversions)["--nr_of_parralel_conversions"]["-l"]("number of parralel execution actions. (efficient usage of the existing processor cores");
+            "This is an utility for converting video files to x265 format \nwithin "
+            "a directory.") |
+        lyra::opt(directory, "dir")["--directory"]["-d"]
+        ("specify directory or file to use for convertion (REQUIRED).")
+            .required() |
+        lyra::opt(convertOption.to_delete)["--delete"]["-d"]("delete original \
+        file upon successful convertion.") |
+        lyra::opt(convertOption.nr_of_parallel_conversions, "nr_of_parallel_conversions")["--nr_of_parallel_conversions"]["-n"]
+        ("number of parallel execution actions. (efficient usage of the existing processor cores)");
 
     // Parse the program arguments:
     auto result = parser.parse({argc, argv});
 
     // Check that the arguments where valid:
-    if (!result) {
-        std::cerr << "Error in command line: " << result.errorMessage()
-            << std::endl;
+    if (!result)
+    {
+        std::cerr << "Error in command line: " << result.message()
+                  << std::endl;
         std::cerr << parser << std::endl;
 
         std::exit(1);
-    } else if(show_help) {
+    }
+    else if (show_help)
+    {
 
         std::cout << parser << std::endl;
-    }else{
-        parse_files(directory, convertOption);
-
     }
-
+    else
+    {
+        std::cerr << "Nr of Parralel conversions: " << convertOption.nr_of_parallel_conversions << std::endl;
+        parse_files(directory, convertOption);
+    }
 }
-
-
