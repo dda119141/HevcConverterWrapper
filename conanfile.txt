@@ -1,0 +1,7 @@
+[requires]
+boost/1.78.0
+nlohmann_json/3.10.4
+lyra/1.6.0
+
+[generators]
+cmake
