@@ -37,7 +37,7 @@ bool parse_files(const std::string &directory,
     {
         const std::string mediafile = video_path.string();
 
-        process_file(mediafile);
+        hevc::process_file(mediafile);
     }
     else
     {
@@ -46,14 +46,15 @@ bool parse_files(const std::string &directory,
             const unsigned int nr_of_conversions = opt_arg.nr_of_parallel_conversions;
             static unsigned int number_of_files = opt_arg.nr_of_parallel_conversions;
             std::vector<std::string> files = {};
-            
-            for (auto &filen : fs::recursive_directory_iterator(video_path.string()))
+
+            for (auto &filen : fs::recursive_directory_iterator(video_path))
             {
                 const std::string mediafile = filen.path().string();
 
                 if (number_of_files > 0)
                 {
-                    const auto success = check_video_file(mediafile);
+                    std::cout << mediafile << std::endl;
+                    const auto success = hevc::check_video_file(mediafile);
                     if (success)
                     {
                         files.push_back(mediafile);
@@ -62,18 +63,23 @@ bool parse_files(const std::string &directory,
                 }
                 else
                 {
-                    std::for_each(std::execution::par_unseq, files.begin(),
-                                  files.end(), [nr_of_conversions](std::string input_file)
-                                  {
-                                      if (nr_of_conversions == 1)
-                                          process_file(input_file, true);
-                                      else
-                                          process_file(input_file, false);
-                                  });
-
-                    number_of_files = nr_of_conversions;
+                    // number_of_files = nr_of_conversions;
                 }
+
             }
+            
+            std::cout << "Nr of files to convert: " << files.size() << std::endl;
+
+            std::for_each(std::execution::par_unseq, files.begin(),
+                    files.end(), [nr_of_conversions](std::string input_file)
+                    {
+                    if (nr_of_conversions == 1)
+                        hevc::process_file(input_file, true);
+                    else
+                        hevc::process_file(input_file, false);
+                    });
+
+
         }
         catch (fs::filesystem_error &e)
         {
