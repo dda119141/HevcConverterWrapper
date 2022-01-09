@@ -37,7 +37,9 @@ bool parse_files(const std::string &directory,
     {
         const std::string mediafile = video_path.string();
 
-        hevc::process_file(mediafile);
+        const auto success = hevc::check_video_is_to_convert(mediafile);
+        if (success)
+            hevc::process_file(mediafile, true);
     }
     else
     {
@@ -54,7 +56,7 @@ bool parse_files(const std::string &directory,
                 if (number_of_files > 0)
                 {
                     std::cout << mediafile << std::endl;
-                    const auto success = hevc::check_video_file(mediafile);
+                    const auto success = hevc::check_video_is_to_convert(mediafile);
                     if (success)
                     {
                         files.push_back(mediafile);
@@ -63,23 +65,37 @@ bool parse_files(const std::string &directory,
                 }
                 else
                 {
-                    // number_of_files = nr_of_conversions;
+                    std::cout << "Nr of files to convert: " << files.size() << std::endl;
+
+                    std::for_each(std::execution::par_unseq, files.begin(),
+                            files.end(), [nr_of_conversions](std::string input_file)
+                            {
+                            if (nr_of_conversions == 1)
+                            hevc::process_file(input_file, true);
+                            else
+                            hevc::process_file(input_file, false);
+                            });
+
+                     number_of_files = nr_of_conversions;
+
+                     files.clear();
                 }
+            }
+
+            if(files.size() > 0) {
+                std::cout << "Nr of files to convert: " << files.size() << std::endl;
+                
+                std::for_each(std::execution::par_unseq, files.begin(),
+                        files.end(), [nr_of_conversions](std::string input_file)
+                        {
+                        if (nr_of_conversions == 1)
+                        hevc::process_file(input_file, true);
+                        else
+                        hevc::process_file(input_file, false);
+                        });
+
 
             }
-            
-            std::cout << "Nr of files to convert: " << files.size() << std::endl;
-
-            std::for_each(std::execution::par_unseq, files.begin(),
-                    files.end(), [nr_of_conversions](std::string input_file)
-                    {
-                    if (nr_of_conversions == 1)
-                        hevc::process_file(input_file, true);
-                    else
-                        hevc::process_file(input_file, false);
-                    });
-
-
         }
         catch (fs::filesystem_error &e)
         {

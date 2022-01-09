@@ -72,8 +72,9 @@ namespace hevc
                 output_file = input_file + std::string(".x265");
             }
 
-            const std::string command = std::string("ffmpeg -i ") + input_file 
-                + std::string(" -c:v libx265 -map 0:v -map 0:a? ") + output_file;
+            const std::string command = std::string("ffmpeg -i \"") + input_file 
+                + std::string("\" -c:v libx265 -map 0:v -map 0:a? \"") + output_file
+                + std::string("\"");
 
             if(print_output)
                 std::cout << command << std::endl;
@@ -107,7 +108,7 @@ namespace hevc
         {
             const std::string command = std::string("ffprobe -v error -select_streams v -of \
                     default=noprint_wrappers=1:nokey=1 \
-                    -show_entries stream=codec_name ") + input_file;
+                    -show_entries stream=codec_name \"") + input_file + std::string("\"");
 
             const auto ret = executeCommand(command, true);
 
@@ -124,13 +125,13 @@ namespace hevc
         return check_f();
     }
 
-    bool check_video_file(const std::string& input_file)
+    bool check_video_is_to_convert(const std::string& input_file)
     {   
         auto check_f = [&input_file]() -> bool
         {
             const std::string command = std::string("ffprobe -v error -select_streams v -of \
                     default=noprint_wrappers=1:nokey=1 \
-                    -show_entries stream=codec_type ") + input_file;
+                    -show_entries stream=codec_type \"") + input_file + std::string("\"");
 
             const auto ret = executeCommand(command, true);
 
@@ -138,6 +139,9 @@ namespace hevc
 
             if(check_video_file_is_hevc(input_file)) // it is already a hevc video file
                 return false;
+            else if(input_file.rfind(".done") != std::string::npos)
+//            else if(input_file.rfind(".done") == (input_file.size() - std::string(".done").size()) )
+                return false; // element already converted
             else
                 return element_exist(command_output, std::string("video"));
         };
