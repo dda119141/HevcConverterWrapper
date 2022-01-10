@@ -9,6 +9,7 @@
 #include <iostream>
 #include <future>
 #include <string>
+#include <experimental/filesystem>
 #include <boost/process.hpp>
 
 namespace hevc
@@ -62,6 +63,19 @@ namespace hevc
             return { false, command_output };
     }
 
+    auto format_ending_to_hevc(const std::string input_file)
+    {
+        namespace fs = std::experimental::filesystem;
+        
+        fs::path file_path = { input_file };
+
+        auto ending = file_path.extension();
+
+        const fs::path new_ending = { std::string(".x265") + ending.string() };
+
+        return file_path.replace_extension(new_ending);
+    }
+
     bool convert_to_x265(const std::string& input_file, bool print_output = false)
     {   
         auto check_f = [&input_file, print_output]()
@@ -69,7 +83,8 @@ namespace hevc
             std::string output_file = input_file;
 
             if (!replace_string(output_file, "264", "265")){
-                output_file = input_file + std::string(".x265");
+                //output_file = input_file + std::string(".x265");
+                output_file = format_ending_to_hevc(input_file).string();
             }
 
             const std::string command = std::string("ffmpeg -i \"") + input_file 
@@ -89,7 +104,7 @@ namespace hevc
 
     bool rename_file(const std::string& input_file)
     {
-        const std::string outp = input_file + std::string(".done");
+        const std::string outp = input_file + std::string{ ".done" };
 
         return std::rename(input_file.c_str(), outp.c_str());
     }
@@ -151,13 +166,13 @@ namespace hevc
 
     bool process_file(const std::string& input_file, bool print_output = false)
     {
-        std::cout << "Conversion Start: " << input_file.c_str() << std::endl;
+        std::cout << "Conversion Start: " << input_file << std::endl;
 
         auto process_video_file = [&input_file, print_output]()
         {
             const auto success = convert_to_x265(input_file, print_output);
 
-            std::cout << "Conversion End: " << input_file.c_str() << std::endl;
+            std::cout << "Conversion End: " << input_file << std::endl;
 
             if(success){
                 return rename_file(input_file);
