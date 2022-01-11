@@ -9,6 +9,7 @@
 #include <iostream>
 #include <future>
 #include <string>
+#include <experimental/filesystem>
 #include <boost/process.hpp>
 
 namespace hevc
@@ -62,6 +63,19 @@ namespace hevc
             return { false, command_output };
     }
 
+    auto format_ending_to_hevc(const std::string input_file)
+    {
+        namespace fs = std::experimental::filesystem;
+        
+        fs::path file_path = { input_file };
+
+        auto ending = file_path.extension();
+
+        const fs::path new_ending = { std::string(".x265") + ending.string() };
+
+        return file_path.replace_extension(new_ending);
+    }
+
     bool convert_to_x265(const std::string& input_file, bool print_output = false)
     {   
         auto check_f = [&input_file, print_output]()
@@ -69,11 +83,13 @@ namespace hevc
             std::string output_file = input_file;
 
             if (!replace_string(output_file, "264", "265")){
-                output_file = input_file + std::string(".x265");
+                //output_file = input_file + std::string(".x265");
+                output_file = format_ending_to_hevc(input_file).string();
             }
 
-            const std::string command = std::string("ffmpeg -i ") + input_file 
-                + std::string(" -c:v libx265 -map 0:v -map 0:a? ") + output_file;
+            const std::string command = std::string("ffmpeg -i \"") + input_file 
+                + std::string("\" -c:v libx265 -map 0:v -map 0:a? \"") + output_file
+                + std::string("\"");
 
             if(print_output)
                 std::cout << command << std::endl;
@@ -88,7 +104,7 @@ namespace hevc
 
     bool rename_file(const std::string& input_file)
     {
-        const std::string outp = input_file + std::string(".done");
+        const std::string outp = input_file + std::string{ ".done" };
 
         return std::rename(input_file.c_str(), outp.c_str());
     }
@@ -107,7 +123,7 @@ namespace hevc
         {
             const std::string command = std::string("ffprobe -v error -select_streams v -of \
                     default=noprint_wrappers=1:nokey=1 \
-                    -show_entries stream=codec_name ") + input_file;
+                    -show_entries stream=codec_name \"") + input_file + std::string("\"");
 
             const auto ret = executeCommand(command, true);
 
@@ -124,13 +140,13 @@ namespace hevc
         return check_f();
     }
 
-    bool check_video_file(const std::string& input_file)
+    bool check_video_is_to_convert(const std::string& input_file)
     {   
         auto check_f = [&input_file]() -> bool
         {
             const std::string command = std::string("ffprobe -v error -select_streams v -of \
                     default=noprint_wrappers=1:nokey=1 \
-                    -show_entries stream=codec_type ") + input_file;
+                    -show_entries stream=codec_type \"") + input_file + std::string("\"");
 
             const auto ret = executeCommand(command, true);
 
@@ -138,6 +154,9 @@ namespace hevc
 
             if(check_video_file_is_hevc(input_file)) // it is already a hevc video file
                 return false;
+            else if(input_file.rfind(".done") != std::string::npos)
+//            else if(input_file.rfind(".done") == (input_file.size() - std::string(".done").size()) )
+                return false; // element already converted
             else
                 return element_exist(command_output, std::string("video"));
         };
@@ -147,13 +166,13 @@ namespace hevc
 
     bool process_file(const std::string& input_file, bool print_output = false)
     {
-        std::cout << "Conversion Start: " << input_file.c_str() << std::endl;
+        std::cout << "Conversion Start: " << input_file << std::endl;
 
         auto process_video_file = [&input_file, print_output]()
         {
             const auto success = convert_to_x265(input_file, print_output);
 
-            std::cout << "Conversion End: " << input_file.c_str() << std::endl;
+            std::cout << "Conversion End: " << input_file << std::endl;
 
             if(success){
                 return rename_file(input_file);

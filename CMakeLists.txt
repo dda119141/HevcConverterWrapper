@@ -20,13 +20,17 @@ endif()
 if(NOT CONAN_LYRA_ROOT)
     find_package(lyra REQUIRED)
 endif()
+if(NOT CONAN_RANGE-V3_ROOT)
+    find_package(range REQUIRED)
+endif()
 
 target_link_libraries(${PROJECT_NAME} PRIVATE stdc++fs)
 
 target_include_directories(${PROJECT_NAME} PRIVATE 
     ${CMAKE_CURRENT_SOURCE_DIR}/include/
     ${CONAN_BOOST_ROOT}/include
-    ${CONAN_LYRA_ROOT}/include)
+    ${CONAN_LYRA_ROOT}/include
+    ${CONAN_RANGE-V3_ROOT}/include)
 
 target_compile_options(${PROJECT_NAME} PRIVATE
      $<$<OR:$<CXX_COMPILER_ID:Clang>,$<CXX_COMPILER_ID:AppleClang>,$<CXX_COMPILER_ID:GNU>>:
